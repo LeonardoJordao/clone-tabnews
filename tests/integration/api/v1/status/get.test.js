@@ -1,3 +1,9 @@
+import orchestrator from "tests/orchestrator.js";
+
+beforeAll(async () => {
+  await orchestrator.waitForAllServices();
+});
+
 let responseBody = undefined;
 
 test("GET to api/v1/status should return 200", async () => {
