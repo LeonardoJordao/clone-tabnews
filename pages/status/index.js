@@ -8,19 +8,14 @@ const fetchAPI = async (key) => {
 
 function DatabaseStatus() {
   const { isLoading, data } = useSWR("/api/v1/status", fetchAPI, {
-    // refreshInterval: 3000,
+    refreshInterval: 3000,
   });
   // console.log(data);
 
-  let updatedAtText;
-  let max_connections;
-  let used_connections;
-  let version;
-
   if (!isLoading && data) {
-    updatedAtText = new Date(data.updated_at).toLocaleString();
-    ({ version, max_connections, used_connections } =
-      data.dependencies.database);
+    const updatedAtText = new Date(data.updated_at).toLocaleString();
+    const { version, max_connections, used_connections } =
+      data.dependencies.database;
 
     return (
       <>
