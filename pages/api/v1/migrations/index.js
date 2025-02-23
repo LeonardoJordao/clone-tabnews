@@ -1,48 +1,50 @@
+import { createRouter } from "next-connect";
 import migrationRunner from "node-pg-migrate";
 import { resolve } from "node:path";
 import database from "infra/database.js";
+import controller from "infra/controller.js";
 
-const migrations = async (req, res) => {
-  const allowedMethods = ["GET", "POST"];
-  if (!allowedMethods.includes(req.method)) {
-    return res.status(405).json({
-      error: `Method "${req.method}" not allowed`,
-    });
-  }
+const defaultMigrationOptions = {
+  dryRun: true,
+  dir: resolve("infra", "migrations"),
+  direction: "up",
+  verbose: true,
+  migrationsTable: "pgmigrations",
+};
 
-  let dbClient;
+const getHandler = async (req, res) => {
+  const dbClient = await database.getNewClient();
   try {
-    dbClient = await database.getNewClient();
-    const defaultMigrationOptions = {
-      dbClient: dbClient,
-      dryRun: true,
-      dir: resolve("infra", "migrations"),
-      direction: "up",
-      verbose: true,
-      migrationsTable: "pgmigrations",
-    };
-
-    if (req.method === "GET") {
-      const pendingMigrations = await migrationRunner(defaultMigrationOptions);
-      return res.status(200).json(pendingMigrations);
-    }
-
-    if (req.method === "POST") {
-      const executedMigrations = await migrationRunner({
-        ...defaultMigrationOptions,
-        dryRun: false,
-      });
-
-      if (executedMigrations.length > 0)
-        return res.status(201).json(executedMigrations);
-
-      return res.status(200).json(executedMigrations);
-    }
-  } catch (error) {
-    console.error(error);
-    throw error;
+    const pendingMigrations = await migrationRunner({
+      ...defaultMigrationOptions,
+      dbClient,
+    });
+    return res.status(200).json(pendingMigrations);
   } finally {
-    await dbClient.end();
+    await dbClient?.end();
   }
 };
-export default migrations;
+
+const postHandler = async (req, res) => {
+  const dbClient = await database.getNewClient();
+  try {
+    const executedMigrations = await migrationRunner({
+      ...defaultMigrationOptions,
+      dbClient,
+      dryRun: false,
+    });
+
+    if (executedMigrations.length > 0)
+      return res.status(201).json(executedMigrations);
+
+    return res.status(200).json(executedMigrations);
+  } finally {
+    await dbClient?.end();
+  }
+};
+
+const router = createRouter();
+router.get(getHandler);
+router.post(postHandler);
+
+export default router.handler(controller.errorHandlers);
