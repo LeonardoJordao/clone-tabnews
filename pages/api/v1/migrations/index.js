@@ -1,6 +1,9 @@
 import { createRouter } from "next-connect";
 import controller from "infra/controller.js";
-import migrator from "models/migrator.js";
+import createMigrator from "models/migrator.js";
+import database from "infra/database.js";
+
+const migrator = createMigrator(database);
 
 const getHandler = async (req, res) => {
   const pendingMigrations = await migrator.listPendingMigrations();
